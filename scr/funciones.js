@@ -345,11 +345,14 @@ function downloadPDF(doc, filename) {
   }
 }
 
+// ── PDF EXPORT ─────────────────────────────────────
 $('btn-export').addEventListener('click', async () => {
   const overlay = $('loading-overlay');
   overlay.style.display = 'flex';
   
   try {
+    console.log('1. Iniciando generación...');
+    
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({unit:'mm',format:'a4'});
     const W=210, H=297, M=18, CW=W-M*2;
@@ -389,6 +392,7 @@ $('btn-export').addEventListener('click', async () => {
     };
 
     // ── SABORES ──
+    console.log('2. Generando sabores...');
     pageHeader(); y=24;
     sectionHead('1','Sabores en stock');
 
@@ -417,6 +421,7 @@ $('btn-export').addEventListener('click', async () => {
     if(state.customFlavors.length){ y+=3; doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(...GRAY_C); doc.text('* Agregados manualmente.',M,y); y+=8; } else y+=6;
 
     // ── INSUMOS ──
+    console.log('3. Generando insumos...');
     checkPage(30); sectionHead('2','Stock de insumos');
     const groups=[
       {cat:'Cucharitas',items:[['Cucharitas descartables',getInsumo('cucharitas')]]},
@@ -441,6 +446,7 @@ $('btn-export').addEventListener('click', async () => {
     });
 
     // ── FOTOS ──
+    console.log('4. Procesando fotos. Cantidad:', state.photos.length);
     if(state.photos.length){
       doc.addPage(); pageHeader(); y=24;
       sectionHead('3','Foto Vitrina');
@@ -448,12 +454,14 @@ $('btn-export').addEventListener('click', async () => {
       const ih = iw * 0.65;
 
       for(let i=0; i<state.photos.length; i++){
+        console.log('Foto '+i+' iniciando...');
         checkPage(ih+12);
         const x = M;
 
         try{
-          // COMPRIMIR IMAGEN
           const dataUrl = state.photos[i].dataUrl;
+          console.log('Foto '+i+' tamaño:', dataUrl.length);
+          
           const compressed = await new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
@@ -463,37 +471,52 @@ $('btn-export').addEventListener('click', async () => {
               canvas.width = w;
               canvas.height = h;
               canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-              resolve(canvas.toDataURL('image/jpeg', 0.65));
+              const result = canvas.toDataURL('image/jpeg', 0.5);
+              console.log('Foto '+i+' comprimida a:', result.length);
+              resolve(result);
+            };
+            img.onerror = () => {
+              console.error('Error cargando imagen '+i);
+              resolve(null);
             };
             img.src = dataUrl;
           });
 
-          doc.addImage(compressed, 'JPEG', x, y, iw, ih);
-
-          doc.setDrawColor(...BEIGE);
-          doc.setLineWidth(0.3);
-          doc.rect(x, y, iw, ih);
-
-          doc.setFont('helvetica','normal');
-          doc.setFontSize(7);
-          doc.setTextColor(...GRAY_C);
-          doc.text('Foto '+(i+1), x, y+ih+5);
+          if(compressed) {
+            doc.addImage(compressed, 'JPEG', x, y, iw, ih);
+            doc.setDrawColor(...BEIGE);
+            doc.setLineWidth(0.3);
+            doc.rect(x, y, iw, ih);
+            doc.setFont('helvetica','normal');
+            doc.setFontSize(7);
+            doc.setTextColor(...GRAY_C);
+            doc.text('Foto '+(i+1), x, y+ih+5);
+          }
         }catch(e){
-          console.error('Foto error:', e);
+          console.error('Foto '+i+' error:', e.message);
         }
 
         y += ih + 12;
       }
+      console.log('5. Fotos completadas');
     }
 
+    console.log('6. Generando dataURL...');
     const slug = state.sede.replace(/\s+/g,'_').toLowerCase();
     const ds = state.fecha.toISOString().slice(0,10);
     const filename = 'stock_'+slug+'_'+ds+'.pdf';
 
-   
     const dataUrl = doc.output('dataurlstring');
-    
+    console.log('7. DataURL generada, tamaño:', dataUrl.length);
+
+    console.log('8. Abriendo ventana...');
     const win = window.open();
+    
+    if(!win) {
+      throw new Error('No se pudo abrir ventana (pop-ups bloqueados)');
+    }
+
+    console.log('9. Escribiendo HTML en ventana...');
     win.document.write(`
       <!DOCTYPE html>
       <html>
@@ -511,13 +534,15 @@ $('btn-export').addEventListener('click', async () => {
       </body>
       </html>
     `);
+    console.log('10. ¡PDF completado!');
 
   } catch(err) {
-    console.error('ERROR:', err);
-    $('export-error').textContent = 'Error al generar el PDF. Intenta nuevamente.';
+    console.error('ERROR COMPLETO:', err);
+    console.error('Stack:', err.stack);
+    $('export-error').textContent = 'Error: '+err.message;
     $('export-error').classList.add('visible');
   } finally {
-    overlay.style.display = 'none';
+    overlay.style.display='none';
   }
 });
 
