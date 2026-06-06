@@ -167,7 +167,7 @@ function agregarSabor() {
   renderCustomFlavors(); updateProgress();
 }
 
-// ── PHOTOS ─────────────────────────────────────────
+// ──Fotos ─────────────────────────────────────────
 $('photo-input').addEventListener('change', e => {
   Array.from(e.target.files).forEach(file => {
     const reader = new FileReader();
@@ -189,7 +189,7 @@ function renderPhotos() {
     </div>`).join('');
 }
 
-// ── PROGRESS ───────────────────────────────────────
+// ── Verificacion ───────────────────────────────────────
 function updateProgress() {
   const checks = [
     {label:'Sede seleccionada', ok:!!state.sede},
@@ -213,9 +213,9 @@ function updateProgress() {
   if (allOk) markDone(5);
 }
 
-// ── FUNCIONES AUXILIARES ─────────────────────────────────────
 
-// Optimiza imágenes para que no congelen el PDF en móvil
+
+// 
 async function optimizeImageForPDF(dataUrl, maxWidth = 1200, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -225,7 +225,7 @@ async function optimizeImageForPDF(dataUrl, maxWidth = 1200, quality = 0.75) {
       let width = img.width;
       let height = img.height;
 
-      // Redimensionar si es muy grande
+      
       if (width > maxWidth) {
         height = (maxWidth * height) / width;
         width = maxWidth;
@@ -237,7 +237,7 @@ async function optimizeImageForPDF(dataUrl, maxWidth = 1200, quality = 0.75) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Comprimir JPEG
+     
       const compressed = canvas.toDataURL('image/jpeg', quality);
       resolve(compressed);
     };
@@ -250,7 +250,7 @@ async function optimizeImageForPDF(dataUrl, maxWidth = 1200, quality = 0.75) {
   });
 }
 
-// Descarga universal: desktop + móvil
+
 function downloadPDF(doc, filename) {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isAndroid = /Android/.test(navigator.userAgent);
@@ -280,9 +280,76 @@ function downloadPDF(doc, filename) {
 }
 
 // ── PDF EXPORT ─────────────────────────────────────
-$('btn-export').addEventListener('click', async () => {  // ← ADD ASYNC
+// ── FUNCIONES AUXILIARES ─────────────────────────────────────
+
+// MÁS COMPRESIÓN PARA IPHONE
+async function optimizeImageForPDF(dataUrl, maxWidth = 800, quality = 0.6) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = (maxWidth * height) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error('Error cargando imagen'));
+    img.src = dataUrl;
+  });
+}
+
+// DESCARGA PARA IPHONE + GOOGLE PAGES
+function downloadPDF(doc, filename) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  try {
+    if (isIOS) {
+      // iPhone: la mejor opción es abrir en viewer
+      try {
+        // Intenta como blob primero (mejor compatibilidad)
+        const pdf = doc.output('blob');
+        const url = URL.createObjectURL(pdf);
+        
+        // Abre en la misma pestaña o nueva según disponibilidad
+        if (window.navigator.standalone || window.navigator.mobileCheckoutSupported) {
+          window.open(url, '_blank');
+        } else {
+          window.location.href = url;
+        }
+        
+        // Libera memoria
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      } catch(blobError) {
+        console.warn('Blob fallback:', blobError);
+        // Si blob falla, intenta data URL (pero puede ser lento)
+        const dataUrl = doc.output('dataurlstring');
+        window.open(dataUrl, '_blank');
+      }
+    } else {
+      // Desktop/Android: descarga normal
+      doc.save(filename);
+    }
+  } catch(e) {
+    console.error('Error descargando:', e);
+    alert('No se pudo descargar. Intenta visualizar en la previsualización.');
+  }
+}
+
+// ── PDF EXPORT ─────────────────────────────────────
+$('btn-export').addEventListener('click', async () => {
   const overlay = $('loading-overlay');
   overlay.style.display = 'flex';
+  
   try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({unit:'mm',format:'a4'});
@@ -386,9 +453,8 @@ $('btn-export').addEventListener('click', async () => {  // ← ADD ASYNC
         const x = M;
 
         try{
-          // ✅ OPTIMIZAR IMAGEN ANTES DE AGREGAR
+         
           const optimizedImage = await optimizeImageForPDF(state.photos[i].dataUrl);
-          
           doc.addImage(optimizedImage, 'JPEG', x, y, iw, ih);
 
           doc.setDrawColor(...BEIGE);
@@ -400,7 +466,8 @@ $('btn-export').addEventListener('click', async () => {  // ← ADD ASYNC
           doc.setTextColor(...GRAY_C);
           doc.text('Foto '+(i+1), x, y+ih+5);
         }catch(e){
-          console.warn('Error procesando foto '+i+':', e);
+          console.warn('Error foto '+i+':', e.message);
+      
         }
 
         y += ih + 12;
@@ -411,13 +478,12 @@ $('btn-export').addEventListener('click', async () => {  // ← ADD ASYNC
     const ds = state.fecha.toISOString().slice(0,10);
     const filename = 'stock_'+slug+'_'+ds+'.pdf';
 
-    // ✅ DESCARGA UNIVERSAL
     downloadPDF(doc, filename);
 
   } catch(err) {
     $('export-error').textContent='Error al generar el PDF. Intentalo nuevamente.';
     $('export-error').classList.add('visible');
-    console.error(err);
+    console.error('Error completo:', err);
   } finally {
     overlay.style.display='none';
   }
