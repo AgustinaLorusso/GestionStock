@@ -213,8 +213,74 @@ function updateProgress() {
   if (allOk) markDone(5);
 }
 
+// ── FUNCIONES AUXILIARES ─────────────────────────────────────
+
+// Optimiza imágenes para que no congelen el PDF en móvil
+async function optimizeImageForPDF(dataUrl, maxWidth = 1200, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // Redimensionar si es muy grande
+      if (width > maxWidth) {
+        height = (maxWidth * height) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Comprimir JPEG
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      resolve(compressed);
+    };
+
+    img.onerror = () => {
+      reject(new Error('No se pudo cargar la imagen'));
+    };
+
+    img.src = dataUrl;
+  });
+}
+
+// Descarga universal: desktop + móvil
+function downloadPDF(doc, filename) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
+
+  try {
+    if (isMobile) {
+      // Móvil: usa blob para mejor compatibilidad
+      const pdf = doc.output('blob');
+      const url = URL.createObjectURL(pdf);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } else {
+      // Desktop: descarga estándar
+      doc.save(filename);
+    }
+  } catch(e) {
+    console.error('Error descargando PDF:', e);
+    throw e;
+  }
+}
+
 // ── PDF EXPORT ─────────────────────────────────────
-$('btn-export').addEventListener('click', async () => {
+$('btn-export').addEventListener('click', async () => {  // ← ADD ASYNC
   const overlay = $('loading-overlay');
   overlay.style.display = 'flex';
   try {
@@ -255,8 +321,6 @@ $('btn-export').addEventListener('click', async () => {
       doc.setTextColor(255,255,255); doc.text(title, M+8, y+13);
       y+=22;
     };
-
-        
 
     // ── SABORES ──
     pageHeader(); y=24;
@@ -316,32 +380,40 @@ $('btn-export').addEventListener('click', async () => {
       sectionHead('3','Foto Vitrina');
       const iw = CW;
       const ih = iw * 0.65;
-      let col=0;
-        for(let i=0;i<state.photos.length;i++){
-            checkPage(ih+12);
 
-            const x = M;
+      for(let i=0; i<state.photos.length; i++){
+        checkPage(ih+12);
+        const x = M;
 
-            try{
-                doc.addImage(state.photos[i].dataUrl,'JPEG',x,y,iw,ih);
+        try{
+          // ✅ OPTIMIZAR IMAGEN ANTES DE AGREGAR
+          const optimizedImage = await optimizeImageForPDF(state.photos[i].dataUrl);
+          
+          doc.addImage(optimizedImage, 'JPEG', x, y, iw, ih);
 
-                doc.setDrawColor(...BEIGE);
-                doc.setLineWidth(0.3);
-                doc.rect(x,y,iw,ih);
+          doc.setDrawColor(...BEIGE);
+          doc.setLineWidth(0.3);
+          doc.rect(x, y, iw, ih);
 
-                doc.setFont('helvetica','normal');
-                doc.setFontSize(7);
-                doc.setTextColor(...GRAY_C);
-                doc.text('Foto '+(i+1),x,y+ih+5);
-            }catch(e){}
-
-            y += ih + 12;
+          doc.setFont('helvetica','normal');
+          doc.setFontSize(7);
+          doc.setTextColor(...GRAY_C);
+          doc.text('Foto '+(i+1), x, y+ih+5);
+        }catch(e){
+          console.warn('Error procesando foto '+i+':', e);
         }
+
+        y += ih + 12;
+      }
     }
 
-    const slug=state.sede.replace(/\s+/g,'_').toLowerCase();
-    const ds=state.fecha.toISOString().slice(0,10);
-    doc.save('stock_'+slug+'_'+ds+'.pdf');
+    const slug = state.sede.replace(/\s+/g,'_').toLowerCase();
+    const ds = state.fecha.toISOString().slice(0,10);
+    const filename = 'stock_'+slug+'_'+ds+'.pdf';
+
+    // ✅ DESCARGA UNIVERSAL
+    downloadPDF(doc, filename);
+
   } catch(err) {
     $('export-error').textContent='Error al generar el PDF. Intentalo nuevamente.';
     $('export-error').classList.add('visible');
