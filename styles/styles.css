@@ -1,5 +1,9 @@
 
-
+@media (max-width: 600px) {
+    [style*="display: flex; gap: 12px"] {
+        flex-direction: column;
+    }
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

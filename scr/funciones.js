@@ -258,7 +258,7 @@ function downloadPDF(doc, filename) {
 
   try {
     if (isMobile) {
-      // Móvil: usa blob para mejor compatibilidad
+      // Móvil
       const pdf = doc.output('blob');
       const url = URL.createObjectURL(pdf);
       const link = document.createElement('a');
@@ -270,7 +270,7 @@ function downloadPDF(doc, filename) {
       
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } else {
-      // Desktop: descarga estándar
+      // Desktop
       doc.save(filename);
     }
   } catch(e) {
@@ -279,80 +279,12 @@ function downloadPDF(doc, filename) {
   }
 }
 
-// ── PDF EXPORT ─────────────────────────────────────
-// ── FUNCIONES AUXILIARES ─────────────────────────────────────
-
-// MÁS COMPRESIÓN PARA IPHONE
-async function optimizeImageForPDF(dataUrl, maxWidth = 800, quality = 0.6) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let width = img.width;
-      let height = img.height;
-
-      if (width > maxWidth) {
-        height = (maxWidth * height) / width;
-        width = maxWidth;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
-      resolve(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.onerror = () => reject(new Error('Error cargando imagen'));
-    img.src = dataUrl;
-  });
-}
-
-// DESCARGA PARA IPHONE + GOOGLE PAGES
-function downloadPDF(doc, filename) {
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-  try {
-    if (isIOS) {
-      // iPhone: la mejor opción es abrir en viewer
-      try {
-        // Intenta como blob primero (mejor compatibilidad)
-        const pdf = doc.output('blob');
-        const url = URL.createObjectURL(pdf);
-        
-        // Abre en la misma pestaña o nueva según disponibilidad
-        if (window.navigator.standalone || window.navigator.mobileCheckoutSupported) {
-          window.open(url, '_blank');
-        } else {
-          window.location.href = url;
-        }
-        
-        // Libera memoria
-        setTimeout(() => URL.revokeObjectURL(url), 3000);
-      } catch(blobError) {
-        console.warn('Blob fallback:', blobError);
-        // Si blob falla, intenta data URL (pero puede ser lento)
-        const dataUrl = doc.output('dataurlstring');
-        window.open(dataUrl, '_blank');
-      }
-    } else {
-      // Desktop/Android: descarga normal
-      doc.save(filename);
-    }
-  } catch(e) {
-    console.error('Error descargando:', e);
-    alert('No se pudo descargar. Intenta visualizar en la previsualización.');
-  }
-}
-
-// ── PDF EXPORT ─────────────────────────────────────
+// ── BOTÓN EXPORTAR PDF ─────────────────────────────────────
 $('btn-export').addEventListener('click', async () => {
   const overlay = $('loading-overlay');
   overlay.style.display = 'flex';
   
   try {
-    console.log('1. Iniciando generación...');
-    
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({unit:'mm',format:'a4'});
     const W=210, H=297, M=18, CW=W-M*2;
@@ -392,7 +324,6 @@ $('btn-export').addEventListener('click', async () => {
     };
 
     // ── SABORES ──
-    console.log('2. Generando sabores...');
     pageHeader(); y=24;
     sectionHead('1','Sabores en stock');
 
@@ -421,7 +352,6 @@ $('btn-export').addEventListener('click', async () => {
     if(state.customFlavors.length){ y+=3; doc.setFont('helvetica','italic'); doc.setFontSize(7); doc.setTextColor(...GRAY_C); doc.text('* Agregados manualmente.',M,y); y+=8; } else y+=6;
 
     // ── INSUMOS ──
-    console.log('3. Generando insumos...');
     checkPage(30); sectionHead('2','Stock de insumos');
     const groups=[
       {cat:'Cucharitas',items:[['Cucharitas descartables',getInsumo('cucharitas')]]},
@@ -446,7 +376,6 @@ $('btn-export').addEventListener('click', async () => {
     });
 
     // ── FOTOS ──
-    console.log('4. Procesando fotos. Cantidad:', state.photos.length);
     if(state.photos.length){
       doc.addPage(); pageHeader(); y=24;
       sectionHead('3','Foto Vitrina');
@@ -454,14 +383,11 @@ $('btn-export').addEventListener('click', async () => {
       const ih = iw * 0.65;
 
       for(let i=0; i<state.photos.length; i++){
-        console.log('Foto '+i+' iniciando...');
         checkPage(ih+12);
         const x = M;
 
         try{
           const dataUrl = state.photos[i].dataUrl;
-          console.log('Foto '+i+' tamaño:', dataUrl.length);
-          
           const compressed = await new Promise((resolve) => {
             const img = new Image();
             img.onload = () => {
@@ -471,80 +397,100 @@ $('btn-export').addEventListener('click', async () => {
               canvas.width = w;
               canvas.height = h;
               canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-              const result = canvas.toDataURL('image/jpeg', 0.5);
-              console.log('Foto '+i+' comprimida a:', result.length);
-              resolve(result);
-            };
-            img.onerror = () => {
-              console.error('Error cargando imagen '+i);
-              resolve(null);
+              resolve(canvas.toDataURL('image/jpeg', 0.65));
             };
             img.src = dataUrl;
           });
 
-          if(compressed) {
-            doc.addImage(compressed, 'JPEG', x, y, iw, ih);
-            doc.setDrawColor(...BEIGE);
-            doc.setLineWidth(0.3);
-            doc.rect(x, y, iw, ih);
-            doc.setFont('helvetica','normal');
-            doc.setFontSize(7);
-            doc.setTextColor(...GRAY_C);
-            doc.text('Foto '+(i+1), x, y+ih+5);
-          }
+          doc.addImage(compressed, 'JPEG', x, y, iw, ih);
+
+          doc.setDrawColor(...BEIGE);
+          doc.setLineWidth(0.3);
+          doc.rect(x, y, iw, ih);
+
+          doc.setFont('helvetica','normal');
+          doc.setFontSize(7);
+          doc.setTextColor(...GRAY_C);
+          doc.text('Foto '+(i+1), x, y+ih+5);
         }catch(e){
-          console.error('Foto '+i+' error:', e.message);
+          console.error('Foto error:', e);
         }
 
         y += ih + 12;
       }
-      console.log('5. Fotos completadas');
     }
 
-    console.log('6. Generando dataURL...');
     const slug = state.sede.replace(/\s+/g,'_').toLowerCase();
     const ds = state.fecha.toISOString().slice(0,10);
     const filename = 'stock_'+slug+'_'+ds+'.pdf';
 
-    const dataUrl = doc.output('dataurlstring');
-    console.log('7. DataURL generada, tamaño:', dataUrl.length);
-
-    console.log('8. Abriendo ventana...');
-    const win = window.open();
     
-    if(!win) {
-      throw new Error('No se pudo abrir ventana (pop-ups bloqueados)');
-    }
-
-    console.log('9. Escribiendo HTML en ventana...');
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${filename}</title>
-        <style>
-          body { margin: 0; padding: 0; overflow: hidden; }
-          embed { width: 100%; height: 100vh; }
-        </style>
-      </head>
-      <body>
-        <embed src="${dataUrl}" type="application/pdf">
-      </body>
-      </html>
-    `);
-    console.log('10. ¡PDF completado!');
+    const pdf = doc.output('blob');
+    const url = URL.createObjectURL(pdf);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
 
   } catch(err) {
-    console.error('ERROR COMPLETO:', err);
-    console.error('Stack:', err.stack);
-    $('export-error').textContent = 'Error: '+err.message;
+    console.error('ERROR:', err);
+    $('export-error').textContent = 'Error al generar el PDF. Intenta nuevamente.';
     $('export-error').classList.add('visible');
   } finally {
-    overlay.style.display='none';
+    overlay.style.display = 'none';
   }
 });
 
+// ── BOTÓN ────────────────────────────────────
+$('btn-whatsapp').addEventListener('click', async () => {
+  const overlay = $('loading-overlay');
+  overlay.style.display = 'flex';
+  
+  try {
+    let mensaje = `STOCK LE BISTROT\n`;
+    mensaje += `Sede: ${state.sede.toUpperCase()}\n`;
+    mensaje += `${state.fecha.toLocaleDateString('es-AR', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}\n`;
+    mensaje += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+    
+    mensaje += `SABORES EN STOCK\n`;
+    const allFl = [
+      ...state.flavors.map(f=>({name:f, qty:state.flavorQty[f]||0, custom:false})),
+      ...state.customFlavors.map(c=>({name:c.name, qty:c.qty, custom:true}))
+    ];
+    allFl.forEach(f => {
+      const marca = f.custom ? '*' : '-';
+      mensaje += `${marca} ${f.name}: ${f.qty}\n`;
+    });
+    
+    mensaje += `\nSTOCK DE INSUMOS\n`;
+    mensaje += `- Cucharitas: ${getInsumo('cucharitas')}\n`;
+    mensaje += `- Conos chicos: ${getInsumo('conos-ch')}\n`;
+    mensaje += `- Conos medianos: ${getInsumo('conos-me')}\n`;
+    mensaje += `- Conos grandes: ${getInsumo('conos-gr')}\n`;
+    mensaje += `- Tarrinas chicas: ${getInsumo('tar-c-ch')}\n`;
+    mensaje += `- Tarrinas medianas: ${getInsumo('tar-c-me')}\n`;
+    mensaje += `- Tarrinas grandes: ${getInsumo('tar-c-gr')}\n`;
+    mensaje += `- Tarrinas vacias: ${getInsumo('tar-v-ch')}\n`;
+    
+    if(state.photos.length) {
+      mensaje += `\nFotos: ${state.photos.length}\n`;
+    }
+    
+    mensaje += `\n━━━━━━━━━━━━━━━━━━━━`;
+    
+    const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+    window.open(urlWhatsApp, '_blank');
+    
+  } catch(err) {
+    console.error('ERROR:', err);
+    $('export-error').textContent = 'Error al generar el mensaje. Intenta nuevamente.';
+    $('export-error').classList.add('visible');
+  } finally {
+    overlay.style.display = 'none';
+  }
+});
 renderFlavors();
 updateProgress();
