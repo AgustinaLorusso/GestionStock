@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Helados — Le Bistrot</title>
+<link rel="icon" href="./img/logoLeBistrot.png" type="image/png">
+<link rel="stylesheet" href="./styles/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="site-header">
+    <div class="header-inner">
+        <div class="header-brand">
+        <div class="brand-main"><span>Le</span> Bistrot</div>
+        <div class="brand-sub">Gestion de Stock</div>
+        </div>
+        <span class="sede-badge" id="sede-badge"></span>
+    </div>
+    </header>
+
+    <!-- PROGRESS -->
+    <div class="progress-strip" id="progress-strip">
+    <div class="progress-inner">
+        <div class="pstep active" id="step-1"><span class="pdot"></span>Local</div>
+        <div class="pdivider"></div>
+        <div class="pstep" id="step-2"><span class="pdot"></span>Sabores</div>
+        <div class="pdivider"></div>
+        <div class="pstep" id="step-3"><span class="pdot"></span>Insumos</div>
+        <div class="pdivider"></div>
+        <div class="pstep" id="step-4"><span class="pdot"></span>Vitrina</div>
+        <div class="pdivider"></div>
+        <div class="pstep" id="step-5"><span class="pdot"></span>pdf</div>
+    </div>
+    </div>
+
+    <main class="main-wrap">
+
+    <!-- ══ SEDE ══ -->
+    <div id="screen-sede">
+        <h1 class="screen-title">Selecciona el local</h1>
+       
+
+        <div class="sede-grid">
+        <div class="sede-card" id="card-port" data-sede="Le Bistrot du Port">
+            <p class="sede-num">L1</p>
+            <p class="sede-name">Le Bistrot<br>du Port</p>
+            <div class="sede-deco"></div>
+        </div>
+        <div class="sede-card" id="card-petit" data-sede="Le Petit Bistrot">
+            <p class="sede-num">L2</p>
+            <p class="sede-name">Le Petit<br>Bistrot</p>
+            <div class="sede-deco"></div>
+        </div>
+        </div>
+
+        <p class="error-msg" id="sede-error">Selecciona un local para seguir.</p>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:32px;">
+        <button class="btn-primary" id="btn-confirmar">Continuar</button>
+        </div>
+    </div>
+
+    <!-- ══ SCREEN FORM ══ -->
+    <div id="screen-form" style="display:none;">
+
+        <div class="meta-row">
+        <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--red);margin-bottom:4px;">Fecha:</div>
+            <div class="meta-fecha" id="fecha-display"></div>
+        </div>
+        <button class="btn-secondary" id="btn-cambiar-sede">Cambiar local</button>
+        </div>
+
+        <!-- SABORES -->
+        <div class="sec-card fade-up">
+        <div class="sec-head">
+            <div>
+            <div class="sec-num"></div>
+            <div class="sec-title">Stock Helados</div>
+            </div>
+        </div>
+        <div class="sec-body">
+            <div id="flavors-list"></div>
+            <div id="custom-flavors-list"></div>
+            <div class="add-flavor-zone">
+            <div class="add-flavor-label">Agregar gusto nuevo</div>
+            <div class="add-flavor-row">
+                <input type="text" class="add-flavor-input" id="new-flavor-name" placeholder="Nombre del sabor">
+                <div class="qty-ctrl">
+                <button class="qty-btn" id="btn-new-minus">−</button>
+                <input type="number" class="qty-input" id="new-flavor-qty" value="0" min="0">
+                <button class="qty-btn" id="btn-new-plus">+</button>
+                </div>
+                <button class="btn-primary" id="btn-agregar" style="padding:10px 22px;font-size:11px;">Agregar</button>
+            </div>
+            <p class="error-msg" id="new-flavor-error"></p>
+            </div>
+        </div>
+        </div>
+
+        <!-- INSUMOS -->
+        <div class="sec-card fade-up" style="animation-delay:0.08s;">
+        <div class="sec-head">
+            <div>
+            <div class="sec-num"></div>
+            <div class="sec-title">Stock de insumos</div>
+            </div>
+        </div>
+        <div class="sec-body">
+
+            <div class="insumo-group">
+            <div class="insumo-cat">Cucharitas</div>
+            <div class="insumo-row">
+                <span class="insumo-label">Cucharitas</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="cucharitas" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-cucharitas" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="cucharitas" data-delta="1">+</button>
+                </div>
+            </div>
+            </div>
+
+            <div class="insumo-group">
+            <div class="insumo-cat">Conos</div>
+            <div class="insumo-row"><span class="insumo-label">Conos chicos</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="conos-ch" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-conos-ch" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="conos-ch" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="insumo-row"><span class="insumo-label">Conos medianos</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="conos-me" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-conos-me" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="conos-me" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="insumo-row"><span class="insumo-label">Conos grandes</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="conos-gr" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-conos-gr" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="conos-gr" data-delta="1">+</button>
+                </div>
+            </div>
+            </div>
+
+            <div class="insumo-group">
+            <div class="insumo-cat">Tarrinas </div>
+            <div class="insumo-row"><span class="insumo-label">Tarrinas chicas</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="tar-c-ch" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-tar-c-ch" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="tar-c-ch" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="insumo-row"><span class="insumo-label">Tarrinas medianas</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="tar-c-me" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-tar-c-me" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="tar-c-me" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="insumo-row"><span class="insumo-label">Tarrinas grandes</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="tar-c-gr" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-tar-c-gr" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="tar-c-gr" data-delta="1">+</button>
+                </div>
+            </div>
+            </div>
+
+            <div class="insumo-group">
+            <div class="insumo-cat">Tarrinas vacias</div>
+            <div class="insumo-row"><span class="insumo-label">Tarrinas vacias</span>
+                <div class="qty-ctrl">
+                <button class="qty-btn" data-action="insumo" data-id="tar-v-ch" data-delta="-1">−</button>
+                <input type="number" class="qty-input" id="insumo-tar-v-ch" value="0" min="0">
+                <button class="qty-btn" data-action="insumo" data-id="tar-v-ch" data-delta="1">+</button>
+                </div>
+            </div>
+
+        </div>
+        </div>
+
+        <!-- FOTOS -->
+        <div class="sec-card fade-up" style="animation-delay:0.16s;">
+        <div class="sec-head">
+            <div>
+            <div class="sec-num"></div>
+            <div class="sec-title">Foto vitrina</div>
+            </div>
+        </div>
+        <div class="sec-body" style="padding:20px 0 4px;">
+            <label for="photo-input" class="photo-upload-label">
+            <svg class="photo-upload-icon" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span class="photo-upload-text">Tomar foto o adjuntar imagen</span>
+            <span class="photo-upload-hint">JPG, PNG — multiples archivos permitidos</span>
+            </label>
+            <input type="file" id="photo-input" accept="image/*" multiple class="hidden" style="display:none;">
+            <div class="photo-grid" id="photo-grid"></div>
+        </div>
+        </div>
+
+        <!-- EXPORTAR -->
+        <div class="sec-card fade-up" style="animation-delay:0.24s;">
+        <div class="sec-head">
+            <div>
+            <div class="sec-num"></div>
+            <div class="sec-title">stock PDF</div>
+            </div>
+        </div>
+        <div class="sec-body" style="padding:24px;">
+            <div class="checklist" id="export-checklist"></div>
+            <button class="btn-primary" id="btn-export" disabled>Generar</button>
+            <p class="error-msg" id="export-error"></p>
+        </div>
+        </div>
+
+    </div>
+    </main>
+
+    <!-- LOADING -->
+    <div id="loading-overlay">
+    <div style="text-align:center;">
+        <div class="spinner"></div>
+        <p class="loading-text">Generando informe</p>
+    </div>
+    </div>
+
+    <script src="./scr/funciones.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>
