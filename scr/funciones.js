@@ -345,7 +345,6 @@ function downloadPDF(doc, filename) {
   }
 }
 
-// ── PDF EXPORT ─────────────────────────────────────
 $('btn-export').addEventListener('click', async () => {
   const overlay = $('loading-overlay');
   overlay.style.display = 'flex';
@@ -453,9 +452,23 @@ $('btn-export').addEventListener('click', async () => {
         const x = M;
 
         try{
-         
-          const optimizedImage = await optimizeImageForPDF(state.photos[i].dataUrl);
-          doc.addImage(optimizedImage, 'JPEG', x, y, iw, ih);
+          // COMPRIMIR IMAGEN
+          const dataUrl = state.photos[i].dataUrl;
+          const compressed = await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let w = img.width, h = img.height;
+              if(w > 800) { h = (800 * h) / w; w = 800; }
+              canvas.width = w;
+              canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/jpeg', 0.65));
+            };
+            img.src = dataUrl;
+          });
+
+          doc.addImage(compressed, 'JPEG', x, y, iw, ih);
 
           doc.setDrawColor(...BEIGE);
           doc.setLineWidth(0.3);
@@ -466,8 +479,7 @@ $('btn-export').addEventListener('click', async () => {
           doc.setTextColor(...GRAY_C);
           doc.text('Foto '+(i+1), x, y+ih+5);
         }catch(e){
-          console.warn('Error foto '+i+':', e.message);
-      
+          console.error('Foto error:', e);
         }
 
         y += ih + 12;
@@ -478,14 +490,34 @@ $('btn-export').addEventListener('click', async () => {
     const ds = state.fecha.toISOString().slice(0,10);
     const filename = 'stock_'+slug+'_'+ds+'.pdf';
 
-    downloadPDF(doc, filename);
+   
+    const dataUrl = doc.output('dataurlstring');
+    
+    const win = window.open();
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${filename}</title>
+        <style>
+          body { margin: 0; padding: 0; overflow: hidden; }
+          embed { width: 100%; height: 100vh; }
+        </style>
+      </head>
+      <body>
+        <embed src="${dataUrl}" type="application/pdf">
+      </body>
+      </html>
+    `);
 
   } catch(err) {
-    $('export-error').textContent='Error al generar el PDF. Intentalo nuevamente.';
+    console.error('ERROR:', err);
+    $('export-error').textContent = 'Error al generar el PDF. Intenta nuevamente.';
     $('export-error').classList.add('visible');
-    console.error('Error completo:', err);
   } finally {
-    overlay.style.display='none';
+    overlay.style.display = 'none';
   }
 });
 
